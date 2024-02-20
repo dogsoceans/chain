@@ -5,23 +5,14 @@
   |=  list-tx=(list tx)
   ^-  ledger
   =/  led=ledger  starting-state
-  =/  counter  0
   |-
-  ~&  ~['counter' counter]
-  ?:  =(counter (dec (lent list-tx)))
+  ?~  list-tx
     led
-  %=  $   
-  counter  +(counter)
-  led      (apply-transaction (snag counter list-tx) led)
-  ==  
-::  %^  spin   ::need-have error doesn't return just ledger  
-::    list-tx
-::    led
-::    apply-transaction
-::
+  $(led (apply-transaction i.list-tx led), list-tx t.list-tx)
+
 ++  transaction-list
   ^-  (list tx)
-  ~[[~zod ~nec 100] [~zod ~nec 5] [~nec ~bud 10]]
+  ~[[~zod ~nec 3] [~zod ~nec 5] [~nec ~bud 10]]
 ::
 ++  nodes
   ^-  (set account)
@@ -37,35 +28,34 @@
   |=  acc=account 
   ^-  [account balance]
   [acc (bex 6)]
-::
+::  handle crashes
 ++  apply-transaction
   |=  [=tx =ledger]
   ^-  ^ledger
-  ?.  (verify-transaction (~(got by ledger) src.tx) amt.tx)
+  ?.  (verify-transaction tx ledger)
     ledger
-  =.  ledger  (~(put by ledger) src.tx (sub (~(got by ledger) src.tx) amt.tx))
-  =.  ledger  (~(put by ledger) des.tx (add (~(got by ledger) des.tx) amt.tx))
+  =/  bal1u  (~(get by ledger) src.tx)
+  =/  bal1  
+  ?~  bal1u  
+    ~
+  u.bal1u
+  =/  bal2u  (~(get by ledger) des.tx)
+  =/  bal2  
+  ?~  bal2u  
+    ~
+  u.bal2u
+  =.  ledger  (~(put by ledger) src.tx (sub bal1 amt.tx))
+  =.  ledger  (~(put by ledger) des.tx (add bal2 amt.tx))
   ledger
-::  =/  bal1=balance  (~(got by ledger) src.tx) ::unsafe got
-::  =/  bal2=balance  (~(got by ledger) des.tx)
-::  ?.  (verify-transaction bal1 amt.tx)
-::     ledger
-::  =/  bal1=balance  (sub bal1 amt.tx)
-::  =/  bal2=balance  (add bal2 amt.tx)
-::  =/  ledger  (~(put by ledger) src.tx bal1) 
-::  =/  ledger  (~(put by ledger) des.tx bal2) 
-::  ledger
-
-:: verify balance wont be negative
-:: if balance is negative skip the invalid tx and store the tx in an error message and continue  
-:: I dont know how to handle the invalidtx.. make-ledger returns a ledger not an error msg should i change that?
+::
 ++  verify-transaction
-  |=  [bal1=balance txn=balance]
+  |=  [=tx =ledger]
   ^-  ?
-  ?:  (gte bal1 txn)
-    ~&  'valid bal'
-    &
-      ~&  ~['balance cant be negative' bal1 'amt.tx' txn] 
-      |
+  ?~  (~(get by ledger) src.tx)
+    |
+  ?~  (~(get by ledger) des.tx)
+    |
+  (gte (~(got by ledger) src.tx) amt.tx) 
 --
+
     
